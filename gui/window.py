@@ -1271,11 +1271,11 @@ class MainWindow(QMainWindow):
         self._rebuild_calendar()
         self._update_today_utilisation()
 
-    def _update_algorithm_choice(self):
-        if self.sidebar_linear_radio.isChecked():
-            self.scheduler.search_method = "linear"
-        else:
-            self.scheduler.search_method = "binary"
+    # def _update_algorithm_choice(self):
+    #     if self.sidebar_linear_radio.isChecked():
+    #         self.scheduler.search_method = "linear"
+    #     else:
+    #         self.scheduler.search_method = "binary"
 
     def _update_today_utilisation(self):
         """Update all room gauges + total summary label based on current mode."""
@@ -1399,20 +1399,26 @@ class DayBookingsDialog(QDialog):
         self.booking_date = booking_date
 
         self.setWindowTitle(f"Bookings for {booking_date.strftime('%d %b %Y')}")
-        self.resize(500, 420)
+        self.resize(1000, 700)
 
         layout = QVBoxLayout()
         self.setLayout(layout)
 
+        # Timeline graph
+        self.timeline = DayTimelineWidget(self.scheduler, booking_date, self)
+        layout.addWidget(self.timeline)
+
+        # Header
         header = QLabel(self.windowTitle())
         header.setAlignment(Qt.AlignCenter)
         header.setStyleSheet("font-size: 16px; font-weight: 600;")
         layout.addWidget(header)
 
+        # Booking list
         self.list_widget = QListWidget()
         layout.addWidget(self.list_widget, stretch=1)
 
-        # form
+        # Booking form
         form_group = QGroupBox("Add Booking")
         form_layout = QVBoxLayout()
         form_group.setLayout(form_layout)
@@ -1445,18 +1451,18 @@ class DayBookingsDialog(QDialog):
 
         form_layout.addLayout(row3)
 
-        # algorithm choice (for your report)
-        row_alg = QHBoxLayout()
-        row_alg.addWidget(QLabel("Search:"))
-        self.linear_radio = QRadioButton("Linear (O(n))")
-        self.binary_radio = QRadioButton("Binary (O(log n))")
-        self.binary_radio.setChecked(True)
-        row_alg.addWidget(self.linear_radio)
-        row_alg.addWidget(self.binary_radio)
-        form_layout.addLayout(row_alg)
-
-        self.comparisons_label = QLabel("Comparisons: 0")
-        form_layout.addWidget(self.comparisons_label)
+        # # algorithm choice (for your report)
+        # row_alg = QHBoxLayout()
+        # row_alg.addWidget(QLabel("Search:"))
+        # self.linear_radio = QRadioButton("Linear (O(n))")
+        # self.binary_radio = QRadioButton("Binary (O(log n))")
+        # self.binary_radio.setChecked(True)
+        # row_alg.addWidget(self.linear_radio)
+        # row_alg.addWidget(self.binary_radio)
+        # form_layout.addLayout(row_alg)
+        #
+        # self.comparisons_label = QLabel("Comparisons: 0")
+        # form_layout.addWidget(self.comparisons_label)
 
         add_btn = QPushButton("Add Booking")
         add_btn.clicked.connect(self._add_booking)
@@ -1520,3 +1526,15 @@ class DayBookingsDialog(QDialog):
             QMessageBox.warning(self, "Conflict", msg)
             self._refresh_list()
             self.timeline.update()
+
+    def on_timeline_clicked(self, snapped_hour):
+        start = snapped_hour
+        end = snapped_hour + 0.5
+
+        self.start_spin.setValue(int(start))
+        self.end_spin.setValue(int(end))
+
+        # If half-hour, adjust spinboxes
+        if start % 1 != 0:
+            self.start_spin.setValue(int(start))
+            self.end_spin.setValue(int(end))

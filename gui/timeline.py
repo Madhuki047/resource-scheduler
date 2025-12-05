@@ -1,11 +1,9 @@
-# gui/window.py
-
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QColor, QPen, QFont
 from PyQt5.QtCore import Qt
 
 from src.algorithms.scheduler import DAY_START_HOUR, DAY_END_HOUR   # you already have these
-# from src.scheduler import BookingScheduler   # only if you need the type hint
+from src.algorithms.scheduler import BookingScheduler   # only if you need the type hint
 
 
 class DayTimelineWidget(QWidget):
@@ -41,8 +39,8 @@ class DayTimelineWidget(QWidget):
         w = self.width()
         h = self.height()
 
-        left_margin = 80
-        right_margin = 20
+        left_margin = 180
+        right_margin = 50
         top_margin = 20
         bottom_margin = 40
 
@@ -64,13 +62,19 @@ class DayTimelineWidget(QWidget):
 
         # Time grid (every 2 hours)
         painter.setPen(QPen(QColor("#d0d3da"), 1, Qt.DashLine))
-        for hour in range(DAY_START_HOUR, DAY_END_HOUR + 1, 2):
+        for half in range(0, (DAY_END_HOUR - DAY_START_HOUR) * 2 + 1):
+            hour = DAY_START_HOUR + half * 0.5
             x = left_margin + (hour - DAY_START_HOUR) / day_len * (w - left_margin - right_margin)
-            painter.drawLine(x, top_margin, x, h - bottom_margin)
+
+            painter.drawLine(int(x), top_margin, int(x), h - bottom_margin)
 
             painter.setPen(QPen(QColor("#555"), 1))
             painter.setFont(QFont("Segoe UI", 8))
-            painter.drawText(x - 12, h - bottom_margin + 15, f"{hour}:00")
+
+            # Label only full hours
+            if hour.is_integer():
+                painter.drawText(int(x - 12), int(h - bottom_margin + 15), f"{hour}:00")
+
             painter.setPen(QPen(QColor("#d0d3da"), 1, Qt.DashLine))
 
         # Draw each room row
@@ -84,7 +88,7 @@ class DayTimelineWidget(QWidget):
 
             # Horizontal baseline
             painter.setPen(QPen(QColor("#e0e3eb"), 2))
-            painter.drawLine(left_margin, y_center, w - right_margin, y_center)
+            painter.drawLine(left_margin, int(y_center), w - right_margin, int(y_center))
 
             # Bookings for this room on this day
             bookings = self.scheduler.get_bookings_for_room_on_day(room, self.booking_date)
@@ -113,3 +117,25 @@ class DayTimelineWidget(QWidget):
                     painter.drawText(int(x1 + 4), int(y_center + 3), b.name)
 
         painter.end()
+
+    def mousePressEvent(self, event):
+        x = event.x()
+        w = self.width()
+        left_margin = 80
+        right_margin = 20
+
+        # Ignore clicks outside the timeline area
+        if x < left_margin or x > w - right_margin:
+            return
+
+        # Convert x → hour
+        day_len = DAY_END_HOUR - DAY_START_HOUR
+        fraction = (x - left_margin) / (w - left_margin - right_margin)
+        hour_float = DAY_START_HOUR + fraction * day_len
+
+        # Snap to nearest 30 minutes
+        snapped = round(hour_float * 2) / 2
+
+        # Emit signal to parent dialog
+        if hasattr(self.parent(), "on_timeline_clicked"):
+            self.parent().on_timeline_clicked(snapped)
